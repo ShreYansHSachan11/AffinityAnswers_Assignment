@@ -1,0 +1,78 @@
+/* ============================================================
+   2(a) – Tigers in taxonomy + ncbi_id of Sumatran Tiger
+   ============================================================ */
+
+/* Count how many tiger subspecies exist */
+SELECT COUNT(*) AS tiger_types
+FROM taxonomy
+WHERE species LIKE '%Panthera tigris%';
+
+/* Find ncbi_id of the Sumatran Tiger */
+SELECT ncbi_id
+FROM taxonomy
+WHERE species = 'Panthera tigris sumatrae';
+
+
+
+/* ============================================================
+   2(b) – Columns that connect the database tables
+   ============================================================ */
+
+/*
+Relationships inferred from schema:
+
+taxonomy.ncbi_id        ↔ rfamseq.ncbi_id
+rfamseq.rfamseq_acc     ↔ full_region.rfamseq_acc
+family.rfam_acc         ↔ full_region.rfam_acc
+family.rfam_acc         ↔ clan_membership.rfam_acc
+clan.clan_acc           ↔ clan_membership.clan_acc
+*/
+
+SELECT 'taxonomy.ncbi_id ↔ rfamseq.ncbi_id'            AS join_path
+UNION ALL
+SELECT 'rfamseq.rfamseq_acc ↔ full_region.rfamseq_acc'
+UNION ALL
+SELECT 'family.rfam_acc ↔ full_region.rfam_acc'
+UNION ALL
+SELECT 'family.rfam_acc ↔ clan_membership.rfam_acc'
+UNION ALL
+SELECT 'clan.clan_acc ↔ clan_membership.clan_acc';
+
+
+
+/* ============================================================
+   2(c) – Longest DNA sequence among rice species
+   ============================================================ */
+
+SELECT 
+    tx.species,
+    rf.length AS dna_length
+FROM rfamseq rf
+JOIN taxonomy tx ON rf.ncbi_id = tx.ncbi_id
+WHERE tx.species LIKE 'Oryza%'
+ORDER BY rf.length DESC
+LIMIT 1;
+
+
+
+/* ============================================================
+   2(d) – Pagination query (Page 9, 15 results per page)
+   ============================================================ */
+
+/*
+Page = 9
+Page size = 15
+Offset = (9 - 1) * 15 = 120
+*/
+
+SELECT 
+    f.rfam_acc,
+    f.rfam_id AS family_name,
+    MAX(rf.length) AS max_sequence_length
+FROM family f
+JOIN full_region fr ON f.rfam_acc = fr.rfam_acc
+JOIN rfamseq rf ON fr.rfamseq_acc = rf.rfamseq_acc
+GROUP BY f.rfam_acc, f.rfam_id
+HAVING max_sequence_length > 1000000
+ORDER BY max_sequence_length DESC
+LIMIT 15 OFFSET 120;
